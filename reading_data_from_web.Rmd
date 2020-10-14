@@ -6,124 +6,101 @@ date: 10/14/2020
 
 ```{r setup}
 library(tidyverse)
+library(rvest)
+library(httr)
 ```
 
-## `pivot_longer`
-
-Load the PULSE data
+### Read data from url
 
 ```{r}
-pulse_data =
-  haven::read_sas("./data_import_examples/public_pulse_data.sas7bdat") %>% 
-  janitor::clean_names()
+url = "http://samhda.s3-us-gov-west-1.amazonaws.com/s3fs-public/field-uploads/2k15StateFiles/NSDUHsaeShortTermCHG2015.htm"
+drug_use_html = read_html(url)
+
+drug_use_html
 ```
 
-Wide format to long format
+### getting all tables from url
 
 ```{r}
-pulse_data_tidy = 
-  pulse_data %>% 
-  pivot_longer(
-    bdi_score_bl:bdi_score_12m, 
-    names_to = "visit",
-    names_prefix = "bdi_score_",
-    values_to = "bdi"
-  )
+drug_use_html %>%
+  html_nodes(css = "table")
 ```
 
-rewrite, combine, and extend (to add a mutate)
+## just the first one
+
 ```{r}
-pulse_data =
-  haven::read_sas("./data_import_examples/public_pulse_data.sas7bdat") %>% 
-  janitor::clean_names() %>% 
-  pivot_longer(
-    bdi_score_bl:bdi_score_12m, 
-    names_to = "visit",
-    names_prefix = "bdi_score_",
-    values_to = "bdi"
-  ) %>% 
-  relocate(id, visit) %>% 
-  mutate(visit = recode(visit, "bl" = "00m"))
+table_marj = 
+  drug_use_html %>% 
+  html_nodes(css = "table") %>% 
+  first() %>%
+  html_table() %>% 
+  slice(-1) %>%  #this is to remove the firs row that contains text
+  as_tibble() # make it nicer
 ```
 
-## `pivot_wider`
-
-Make up some data!
+## LEARNING ASSESSMENT
 
 ```{r}
-analysis_result = 
+table_cost_living_nyc =
+  read_html("https://www.bestplaces.net/cost_of_living/city/new_york/new_york") %>% 
+  html_nodes(css = "table") %>% 
+  .[[1]]%>% 
+  html_table(header=TRUE)
+```
+
+### CSS selectors
+
+IMDB url on starwars movies
+```{r}
+swm_html = 
+  read_html("https://www.imdb.com/list/ls070150896/")
+```
+
+For each element, I’ll use the CSS selector in html_nodes() to extract the relevant HTML code, and convert it to text. Then I can combine these into a data frame.
+
+```{r}
+title_vec = 
+  swm_html %>%
+  html_nodes(".lister-item-header a") %>%
+  html_text()
+
+gross_rev_vec = 
+  swm_html %>%
+  html_nodes(".text-small:nth-child(7) span:nth-child(5)") %>%
+  html_text()
+
+runtime_vec = 
+  swm_html %>%
+  html_nodes(".runtime") %>%
+  html_text()
+
+swm_df = 
   tibble(
-    group = c("treatment", "treatment", "placebo", "placebo"),
-    time = c("pre", "post", "pre", "post"),
-    mean = c(4, 8, 3.5, 4)
-  )
-
-#tidy dataframe - long
-
-analysis_result %>% 
-  pivot_wider(
-    names_from = "time",
-    values_from = "mean"
-  )
-
-# tidy but wider now
+    title = title_vec,
+    rev = gross_rev_vec,
+    runtime = runtime_vec)
 ```
 
-## Binding rows using the LoR data
-
-First step is import each table
+### Using an API
 
 ```{r}
-fellowship_ring = 
-  readxl::read_excel("./data_import_examples/LotR_Words.xlsx", range = "b3:d6") %>% 
-  mutate(movie = "fellowship_ring")
+nyc_water = 
+  GET("https://data.cityofnewyork.us/resource/ia2d-e54m.csv") %>% 
+  content("parsed")
 
-two_towers = 
-  readxl::read_excel("./data_import_examples/LotR_Words.xlsx", range = "f3:h6") %>% 
-  mutate(movie = "two_towers")
+brfss_smart2010 = 
+  GET("https://chronicdata.cdc.gov/resource/acme-vg9e.csv",
+      query = list("$limit" = 5000)) %>% 
+  content("parsed")
 
-return_king = 
-  readxl::read_excel("./data_import_examples/LotR_Words.xlsx", range = "j3:l6") %>% 
-  mutate(movie = "return_king")
+poke = 
+  GET("http://pokeapi.co/api/v2/pokemon/1") %>%
+  content()
+
+poke$name
 ```
+To build a Pokemon dataset for analysis, you’d need to distill the data returned from the API into a useful format; iterate across all pokemon; and combine the results.
 
-Bind all the rows together
+For both of the API examples we saw today, it wouldn’t be terrible to just download the CSV, document where it came from carefully, and move on. APIs are more helpful when the full dataset is complex and you only need pieces, or when the data are updated regularly.
 
-```{r}
-lotr_tidy=
-  bind_rows(fellowship_ring, two_towers, return_king) %>% 
-  janitor::clean_names() %>% 
-  relocate(movie) %>% 
-  pivot_longer(
-    female:male, 
-    names_to = "gender",
-    values_to = "words"
-  )
-```
-
-## Joining datasets
-
-Import and clean the FAS datasets.
-
-```{r}
-pups_df = 
-  read_csv("./data_import_examples/FAS_pups.csv") %>% 
-  janitor::clean_names() %>% 
-  mutate(sex = recode(sex, `1` = "male", `2` = "female"))
-
-litters_df = 
-  read_csv("./data_import_examples/FAS_litters.csv") %>% 
-  janitor::clean_names() %>% 
-  relocate(litter_number) %>% 
-  separate(group, into = c("dose", "day_of_tx"), sep = 3) #"sep=" separate after 3 characters
-```
-
-Joining them
-
-```{r}
-fas_df = 
-  left_join(pups_df, litters_df, by = "litter_number") %>% 
-  arrange(litter_number) %>% 
-  relocate(litter_number, dose, day_of_tx)
-```
 
