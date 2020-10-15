@@ -153,4 +153,34 @@ as.numeric(vec_sex)
 
     ## [1] 1 1 2 2
 
-## NSDUH
+## NSDUH – strings
+
+``` r
+url = "http://samhda.s3-us-gov-west-1.amazonaws.com/s3fs-public/field-uploads/2k15StateFiles/NSDUHsaeShortTermCHG2015.htm"
+
+table_marj = 
+  read_html(url) %>% 
+  html_nodes(css = "table") %>% 
+  first() %>%
+  html_table() %>% 
+  slice(-1) %>%  #this is to remove the firs row in every column (that contains text in this case)
+  as_tibble()
+```
+
+``` r
+data_marj = 
+  table_marj %>% 
+  select(-contains("P value")) %>% 
+  pivot_longer(
+    -State, 
+    names_to = "age_year",
+    values_to = "percent"
+  ) %>% 
+  separate(age_year, into = c("age", "year"), sep = "\\(") %>% 
+  mutate(
+    year = str_replace(year, "\\)", ""),
+    percent = str_replace(percent, "[a-c]$", ""),
+    percent = as.numeric(percent)
+  ) %>% 
+  filter(!(State %in% c("Total U.S.", "Northeast", "Midwest", "South", "West")))
+```
