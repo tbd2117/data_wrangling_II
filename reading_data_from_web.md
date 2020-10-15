@@ -121,9 +121,17 @@ nyc_water =
     ## )
 
 ``` r
+# alternatively - as json file / not prefered
+
+nyc_water = 
+  GET("https://data.cityofnewyork.us/resource/ia2d-e54m.json") %>% 
+  content("text") %>% 
+  jsonlite::fromJSON() %>% 
+  as_tibble()
+
 brfss_smart2010 = 
   GET("https://chronicdata.cdc.gov/resource/acme-vg9e.csv",
-      query = list("$limit" = 5000)) %>% 
+      query = list("$limit" = 5000)) %>% #this is very specific about this particular API
   content("parsed")
 ```
 
@@ -141,15 +149,47 @@ brfss_smart2010 =
 
     ## See spec(...) for full column specifications.
 
+## Some data aren’t so nice
+
+Let’s look at pokémon …
+
 ``` r
-poke = 
-  GET("http://pokeapi.co/api/v2/pokemon/1") %>%
+pokemon_data = 
+  GET("http://pokeapi.co/api/v2/pokemon/1") %>% #about pokemon 1
   content()
 
-poke$name
+pokemon_data$name
 ```
 
     ## [1] "bulbasaur"
+
+``` r
+pokemon_data$types
+```
+
+    ## [[1]]
+    ## [[1]]$slot
+    ## [1] 1
+    ## 
+    ## [[1]]$type
+    ## [[1]]$type$name
+    ## [1] "grass"
+    ## 
+    ## [[1]]$type$url
+    ## [1] "https://pokeapi.co/api/v2/type/12/"
+    ## 
+    ## 
+    ## 
+    ## [[2]]
+    ## [[2]]$slot
+    ## [1] 2
+    ## 
+    ## [[2]]$type
+    ## [[2]]$type$name
+    ## [1] "poison"
+    ## 
+    ## [[2]]$type$url
+    ## [1] "https://pokeapi.co/api/v2/type/4/"
 
 To build a Pokemon dataset for analysis, you’d need to distill the data
 returned from the API into a useful format; iterate across all pokemon;

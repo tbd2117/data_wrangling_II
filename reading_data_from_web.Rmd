@@ -109,16 +109,31 @@ nyc_water =
   GET("https://data.cityofnewyork.us/resource/ia2d-e54m.csv") %>% 
   content("parsed")
 
+# alternatively - as json file / not prefered
+
+nyc_water = 
+  GET("https://data.cityofnewyork.us/resource/ia2d-e54m.json") %>% 
+  content("text") %>% 
+  jsonlite::fromJSON() %>% 
+  as_tibble()
+
 brfss_smart2010 = 
   GET("https://chronicdata.cdc.gov/resource/acme-vg9e.csv",
-      query = list("$limit" = 5000)) %>% 
+      query = list("$limit" = 5000)) %>% #this is very specific about this particular API
   content("parsed")
+```
 
-poke = 
-  GET("http://pokeapi.co/api/v2/pokemon/1") %>%
+## Some data aren't so nice
+
+Let's look at pokémon ...
+
+```{r}
+pokemon_data = 
+  GET("http://pokeapi.co/api/v2/pokemon/1") %>% #about pokemon 1
   content()
 
-poke$name
+pokemon_data$name
+pokemon_data$types
 ```
 To build a Pokemon dataset for analysis, you’d need to distill the data returned from the API into a useful format; iterate across all pokemon; and combine the results.
 
