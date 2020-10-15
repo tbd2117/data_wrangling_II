@@ -156,9 +156,44 @@ data_marj =
 ```{r}
 data_marj %>% 
   filter(age == "12-17") %>% 
-  mutate(State = fct_reorder(State, percent)) %>% 
+  mutate(State = fct_reorder(State, percent)) %>% #uses median
   ggplot(aes(x = State, y = percent, color = year)) + 
   geom_point() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
+## Weather data
+
+```{r}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728", "USC00519397", "USS0023B17S"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(
+      id, 
+      USW00094728 = "CentralPark_NY", 
+      USC00519397 = "Waikiki_HA",
+      USS0023B17S = "Waterhole_WA"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+```{r}
+weather_df %>% 
+  mutate(name = fct_reorder(name, tmax)) %>% #uses median
+  ggplot(aes(x = name, y = tmax))+
+  geom_violin()
+```
+
+```{r}
+weather_df %>% 
+  lm(tmax ~ name, data = .) #central park is the reference group
+
+weather_df %>% 
+  mutate(name = fct_relevel(name, "Waikiki_HA")) %>%  #now i forced waikiki to be the first factor = reference
+  lm(tmax ~ name, data = .)
+```
